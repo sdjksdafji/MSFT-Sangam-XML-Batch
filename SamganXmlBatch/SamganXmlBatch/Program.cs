@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using System.IO;
 
 namespace SamganXmlBatch
 {
@@ -12,10 +13,13 @@ namespace SamganXmlBatch
         static void Main(string[] args)
         {
 
-            //D:\SearchGold\deploy\builds\data\Sangam_Partners\Sangam-Prod2\OfficeWAC\TestEnv\Jobs\EventTags.job - Copy.xml
-            String path = getPathFromConsole();
 
-            XDocument doc = XDocument.Load(path);
+
+            //D:\SearchGold\deploy\builds\data\Sangam_Partners\Sangam-Prod2\OfficeWAC\TestEnv\Jobs\EventTags.job - Copy.xml
+            String dir = getDirFromConsole();
+            FileInfo[] jobFiles = getJobFiles(dir, true);
+
+            XDocument doc = XDocument.Load(jobFiles[0].FullName);
             Console.WriteLine(doc.ToString());
             dfsXnode((XElement)doc.FirstNode, 0);
 
@@ -23,21 +27,36 @@ namespace SamganXmlBatch
 
             //dfsPrintNameAndInnerText(doc, 0);
 
-            doc.Save(path);
+          //  doc.Save(path);
 
 
             Console.ReadKey();
         }
 
-        static private String getPathFromConsole()
+        static private String getDirFromConsole()
         {
-            Console.Write("Please enter the path of XML file:");
+            Console.Write("Please enter the directory of XML file:");
             String path = Console.ReadLine();
             if (path != null)
             {
-                Console.WriteLine("The path is: " + path);
+                Console.WriteLine("The directory is: " + path);
             }
             return path;
+        }
+
+        static private FileInfo[] getJobFiles(String dir, Boolean print)
+        {
+            DirectoryInfo di = new DirectoryInfo(dir);
+            Console.WriteLine(di.Attributes.ToString());
+            FileInfo[] fileNames = di.GetFiles("*.job.xml", SearchOption.AllDirectories);
+            if (print)
+            {
+                foreach (FileInfo fi in fileNames)
+                {
+                    Console.WriteLine("{0}: {1}: {2}", fi.Name, fi.LastAccessTime, fi.Length);
+                }
+            }
+            return fileNames;
         }
 
         static private void dfsXnode(XElement node, int depth)
