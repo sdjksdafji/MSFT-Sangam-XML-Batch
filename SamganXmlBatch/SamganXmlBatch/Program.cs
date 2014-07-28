@@ -1,5 +1,5 @@
 ﻿using System;
-using System.Xml;
+using System.Xml.Linq;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -15,12 +15,15 @@ namespace SamganXmlBatch
             //D:\SearchGold\deploy\builds\data\Sangam_Partners\Sangam-Prod2\OfficeWAC\TestEnv\Jobs\EventTags.job - Copy.xml
             String path = getPathFromConsole();
 
-            XmlDocument doc = new XmlDocument();
-            doc.Load(path);
+            XDocument doc = XDocument.Load(path);
+            Console.WriteLine(doc.ToString());
+            dfsXnode((XElement)doc.FirstNode, 0);
 
-            Console.WriteLine(doc.ChildNodes.Count);
 
-            dfsPrintNameAndInnerText(doc, 0);
+
+            //dfsPrintNameAndInnerText(doc, 0);
+
+            doc.Save(path);
 
 
             Console.ReadKey();
@@ -37,7 +40,7 @@ namespace SamganXmlBatch
             return path;
         }
 
-        static private void dfsPrintNameAndInnerText(XmlNode node, int depth)
+        static private void dfsXnode(XElement node, int depth)
         {
             if (node == null)
             {
@@ -47,6 +50,30 @@ namespace SamganXmlBatch
             {
                 Console.Write("\t");
             }
+
+            Console.WriteLine("Name: " + node.Name);
+
+            XElement childNode = null;
+            childNode = (XElement)node.FirstNode;
+            while (childNode != null)
+            {
+                dfsXnode(childNode, depth + 1);
+                childNode = (XElement)childNode.NextNode;
+            }
+        }
+
+
+        static private void dfsPrintNameAndInnerText(System.Xml.XmlNode node, int depth)
+        {
+            if (node == null)
+            {
+                return;
+            }
+            for (int i = 0; i < depth; i++)
+            {
+                Console.Write("\t");
+            }
+
             Console.WriteLine("Name: " + node.Name + " || Inner Text: " + node.InnerText);
             for (int i = 0; i < node.ChildNodes.Count; i++)
             {
