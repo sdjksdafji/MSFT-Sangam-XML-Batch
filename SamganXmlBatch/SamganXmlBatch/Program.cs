@@ -27,7 +27,7 @@ namespace SamganXmlBatch
 
             //dfsPrintNameAndInnerText(doc, 0);
 
-          //  doc.Save(path);
+            doc.Save(jobFiles[0].FullName);
 
 
             Console.ReadKey();
@@ -59,7 +59,7 @@ namespace SamganXmlBatch
             return fileNames;
         }
 
-        static private void dfsXnode(XElement node, int depth)
+        private static void dfsXnode(XElement node, int depth)
         {
             if (node == null)
             {
@@ -71,6 +71,19 @@ namespace SamganXmlBatch
             }
 
             Console.WriteLine("Name: " + node.Name);
+            AddProcessDateTime(node);
+
+            IEnumerable<XAttribute> attList =
+                from at in node.Attributes()
+                select at;
+            foreach (XAttribute att in attList)
+            {
+                for (int i = 0; i < depth; i++)
+                {
+                    Console.Write("\t");
+                }
+                Console.WriteLine(att);
+            }
 
             XElement childNode = null;
             childNode = (XElement)node.FirstNode;
@@ -78,6 +91,21 @@ namespace SamganXmlBatch
             {
                 dfsXnode(childNode, depth + 1);
                 childNode = (XElement)childNode.NextNode;
+            }
+        }
+
+        private static void AddProcessDateTime(XElement node)
+        {
+            if (node.Name.ToString().Equals("Parameters", StringComparison.Ordinal))
+            {
+                //Console.WriteLine("--------------------------------------- paramenters found");
+                XNamespace bing = "http://schemas.microsoft.com/bing/spatialdata/activity";
+                XElement processDateTime = new XElement(bing+"JobParameter");
+                processDateTime.SetAttributeValue("name", "ProcessDateTime");
+                processDateTime.SetAttributeValue("type", "DateTime");
+                processDateTime.SetAttributeValue("isOptional", "false");
+                processDateTime.SetAttributeValue("default", "1970-01-01 12:00:00 AM");
+                node.Add(processDateTime);
             }
         }
 
