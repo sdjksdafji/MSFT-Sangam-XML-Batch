@@ -12,20 +12,42 @@ namespace SamganXmlBatch
     {
         static void Main(string[] args)
         {
-
-
-
-            //D:\SearchGold\deploy\builds\data\Sangam_Partners\Sangam-Prod2\OfficeWAC\TestEnv\Jobs\EventTags.job - Copy.xml
-            String dir = getDirFromConsole();
-            FileInfo[] jobFiles = getJobFiles(dir, true);
-
-
-            for (int i = 0; i < jobFiles.Length; i++)
+            if (args.Length < 1)
             {
-                XDocument doc = XDocument.Load(jobFiles[i].FullName);
-                dfsXnode((XElement)doc.FirstNode, 0);
-                doc.Save(jobFiles[i].FullName);
+                Console.WriteLine(
+                    "usage: [filename]\n Parameters:\nfilename: the text file should contain all the file pathes which need to be done");
             }
+            else
+            {
+                Console.WriteLine("Doing file operation");
+                string filename;
+
+                // Read the file and display it line by line.
+                System.IO.StreamReader file =
+                    new System.IO.StreamReader(args[0]);
+                while ((filename = file.ReadLine()) != null)
+                {
+                    Console.WriteLine(filename);
+                    FileInfo jobFile = new FileInfo(filename);
+                    XDocument doc = XDocument.Load(jobFile.FullName);
+                    dfsXnode((XElement)doc.FirstNode, 0);
+                    doc.Save(jobFile.FullName);
+                }
+
+                file.Close();
+
+            }
+            ////D:\SearchGold\deploy\builds\data\Sangam_Partners\Sangam-Prod2\OfficeWAC\TestEnv\Jobs\EventTags.job - Copy.xml
+            //String dir = getDirFromConsole();
+            //FileInfo[] jobFiles = getJobFiles(dir, true);
+
+
+            //for (int i = 0; i < jobFiles.Length; i++)
+            //{
+            //    XDocument doc = XDocument.Load(jobFiles[i].FullName);
+            //    dfsXnode((XElement)doc.FirstNode, 0);
+            //    doc.Save(jobFiles[i].FullName);
+            //}
 
 
 
@@ -60,15 +82,20 @@ namespace SamganXmlBatch
             return fileNames;
         }
 
+
+
+
         private static void dfsXnode(XElement node, int depth)
         {
             if (node == null)
             {
                 return;
             }
-            for (int i = 0; i < depth; i++)
+
+            if (depth == 0)
             {
-                Console.Write("\t");
+                parameterTodayFound = false;
+                yesterdayMacroFound = false;
             }
 
             if (AddjustDateTimeInParameteres(node))
@@ -81,7 +108,7 @@ namespace SamganXmlBatch
                 return;
             }
 
-            ChangeNodeToProcessDateTime(node);
+            ChangeNodeToYesterday(node);
             XElement childNode = null;
             childNode = (XElement)node.FirstNode;
             while (childNode != null)
@@ -89,11 +116,22 @@ namespace SamganXmlBatch
                 dfsXnode(childNode, depth + 1);
                 childNode = (XElement)childNode.NextNode;
             }
+            if (depth == 0)
+            {
+                if (!parameterTodayFound)
+                {
+                    AddJobParameterProcessDateTime(node);
+                }
+                if (!yesterdayMacroFound)
+                {
+                    AddMacroForYesterday(node);
+                }
+            }
         }
 
         private static bool AddjustDateTimeInParameteres(XElement node)
         {
-            bool parameterFound = false;
+
             if (node.Name.ToString().Equals("Parameters", StringComparison.Ordinal))
             {
                 XElement childNode = null;
@@ -109,13 +147,13 @@ namespace SamganXmlBatch
                         if (att.Name.ToString().Equals("name", StringComparison.Ordinal) && att.Value.ToString().Equals("today", StringComparison.Ordinal))
                         {
                             ChangeJobParameterToProcessDateTime(childNode);
-                            parameterFound = true;
+                            parameterTodayFound = true;
                             goto BreakLabel;
                         }
                         if (att.Name.ToString().Equals("name", StringComparison.Ordinal) &&
                             att.Value.ToString().Equals("ProcessDateTime", StringComparison.Ordinal))
                         {
-                            parameterFound = true;
+                            parameterTodayFound = true;
                             goto BreakLabel;
                         }
                     }
@@ -124,11 +162,6 @@ namespace SamganXmlBatch
                 }
             BreakLabel:
 
-
-                if (!parameterFound)
-                {
-                    AddJobParameterProcessDateTime(node);
-                }
                 return true;
             }
             return false;
@@ -140,8 +173,14 @@ namespace SamganXmlBatch
             jobParameterNode.SetAttributeValue("default", "1970-01-01 12:00:00 AM");
         }
 
-        private static void AddJobParameterProcessDateTime(XElement parameterNode)
+        private static void AddJobParameterProcessDateTime(XElement node)
         {
+            XElement parameterNode = findChild("Parameters", node);
+            if (parameterNode == null)
+            {
+                parameterNode = new XElement("Parameters");
+                node.Add(parameterNode);
+            }
             XElement processDateTime = new XElement(BING_NS + "JobParameter");
             processDateTime.SetAttributeValue("name", "ProcessDateTime");
             processDateTime.SetAttributeValue("type", "DateTime");
@@ -167,6 +206,10 @@ namespace SamganXmlBatch
                         {
                             ChangeJobMacroToResolvedProcessDateTime(childNode);
                         }
+                        if (att.Name.ToString().Equals("name", StringComparison.Ordinal) && att.Value.ToString().Equals("Yesterday", StringComparison.Ordinal))
+                        {
+                            yesterdayMacroFound = true;
+                        }
                     }
                     childNode = (XElement)childNode.NextNode;
                 }
@@ -181,8 +224,23 @@ namespace SamganXmlBatch
             macroNode.SetAttributeValue("expression", "(StringFormat('{0:yyyy-MM-dd}', ./ProcessDateTime) == '1970-01-01') ? DateTime.Subtract(DateTime.Now, 1, 0, 0, 0) : ./ProcessDateTime");
         }
 
+        private static void AddMacroForYesterday(XElement node)
+        {
+            XElement macroForYesterday = new XElement(BING_NS + "JobMacro");
+            XElement macroNode = findChild("Macros", node);
+            if (macroNode == null)
+            {
+                macroNode = new XElement("Macros");
+                node.Add(macroNode);
+            }
+            macroForYesterday.SetAttributeValue("name", "Yesterday");
+            macroForYesterday.SetAttributeValue("type", "DateTime");
+            macroForYesterday.SetAttributeValue("expression", "DateTime.Subtract(./ProcessDateTime, 1)");
+            macroNode.Add(macroForYesterday);
+        }
 
-        private static void ChangeNodeToProcessDateTime(XElement node)
+
+        private static void ChangeNodeToYesterday(XElement node)
         {
             IEnumerable<XAttribute> attList =
     from at in node.Attributes()
@@ -195,7 +253,7 @@ namespace SamganXmlBatch
                     if (node.Name.ToString().Equals("ScriptParameter"))
                     {
                         att.Value = "[StringFormat('" + oldValue.Replace("(today-1)", "{0:yyyy-MM-dd}") +
-                                    "', ./ResolvedProcessDateTime)]";
+                                    "', ./Yesterday)]";
                     }
                     else
                     {
@@ -224,6 +282,20 @@ namespace SamganXmlBatch
             }
         }
 
+        static private XElement findChild(String name, XElement node)
+        {
+            IEnumerable<XElement> elements =
+    from el in node.Elements(name)
+    select el;
+            foreach (XElement el in elements)
+            {
+                return el;
+            }
+            return null;
+        }
+
         private static XNamespace BING_NS = "http://schemas.microsoft.com/bing/spatialdata/activity";
+        private static bool parameterTodayFound = false;
+        private static bool yesterdayMacroFound = false;
     }
 }
