@@ -19,15 +19,17 @@ namespace SamganXmlBatch
             String dir = getDirFromConsole();
             FileInfo[] jobFiles = getJobFiles(dir, true);
 
-            XDocument doc = XDocument.Load(jobFiles[0].FullName);
-            Console.WriteLine(doc.ToString());
-            dfsXnode((XElement)doc.FirstNode, 0);
+            
+            for (int i = 0; i < jobFiles.Length; i++)
+            {
+                XDocument doc = XDocument.Load(jobFiles[i].FullName);
+                Console.WriteLine(doc.ToString());
+                dfsXnode((XElement) doc.FirstNode, 0);
+                doc.Save(jobFiles[i].FullName);
+            }
 
 
-
-            //dfsPrintNameAndInnerText(doc, 0);
-
-            doc.Save(jobFiles[0].FullName);
+  
 
 
             Console.ReadKey();
@@ -70,8 +72,11 @@ namespace SamganXmlBatch
                 Console.Write("\t");
             }
 
-            Console.WriteLine("Name: " + node.Name);
-            AddProcessDateTime(node);
+            //Console.WriteLine("Name: " + node.Name);
+            if (AddjustDateTimeInParameteres(node))
+            {
+                return;
+            }
 
             IEnumerable<XAttribute> attList =
                 from at in node.Attributes()
@@ -80,9 +85,9 @@ namespace SamganXmlBatch
             {
                 for (int i = 0; i < depth; i++)
                 {
-                    Console.Write("\t");
+                    //Console.Write("\t");
                 }
-                Console.WriteLine(att);
+                //Console.WriteLine("ATT: " + att);
             }
 
             XElement childNode = null;
@@ -94,19 +99,63 @@ namespace SamganXmlBatch
             }
         }
 
-        private static void AddProcessDateTime(XElement node)
+        private static bool AddjustDateTimeInParameteres(XElement node)
         {
+            bool todayParameterFound = false;
             if (node.Name.ToString().Equals("Parameters", StringComparison.Ordinal))
             {
-                //Console.WriteLine("--------------------------------------- paramenters found");
-                XNamespace bing = "http://schemas.microsoft.com/bing/spatialdata/activity";
-                XElement processDateTime = new XElement(bing+"JobParameter");
-                processDateTime.SetAttributeValue("name", "ProcessDateTime");
-                processDateTime.SetAttributeValue("type", "DateTime");
-                processDateTime.SetAttributeValue("isOptional", "false");
-                processDateTime.SetAttributeValue("default", "1970-01-01 12:00:00 AM");
-                node.Add(processDateTime);
+                XElement childNode = null;
+                childNode = (XElement)node.FirstNode;
+             while (childNode != null)
+                {
+                    // search today in attributes of JobParameters
+                    IEnumerable<XAttribute> attList =
+    from at in childNode.Attributes()
+    select at;
+                    foreach (XAttribute att in attList)
+                    {
+                        if (att.Name.ToString().Equals("name", StringComparison.Ordinal) && att.Value.ToString().Equals("today", StringComparison.Ordinal))
+                        {
+                            ChangeJobParameterToProcessDateTime(childNode);
+                            todayParameterFound = true;
+                            goto BreakLabel;
+                        }
+                    }
+
+                    childNode = (XElement)childNode.NextNode;
+                }
+                BreakLabel:
+
+
+                if (!todayParameterFound)
+                {
+                    AddJobParameterProcessDateTime(node);
+                }
+                return true;
             }
+            return false;
+        }
+
+        private static void ChangeJobParameterToProcessDateTime(XElement jobParameterNode)
+        {
+            jobParameterNode.SetAttributeValue("name", "ProcessDateTime");
+            jobParameterNode.SetAttributeValue("default", "1970-01-01 12:00:00 AM"); Console.WriteLine("---------------------------- 1");
+        }
+
+        private static void AddJobParameterProcessDateTime(XElement parameterNode)
+        {
+            XNamespace bing = "http://schemas.microsoft.com/bing/spatialdata/activity";
+            XElement processDateTime = new XElement(bing + "JobParameter");
+            processDateTime.SetAttributeValue("name", "ProcessDateTime");
+            processDateTime.SetAttributeValue("type", "DateTime");
+            processDateTime.SetAttributeValue("isOptional", "false");
+            processDateTime.SetAttributeValue("default", "1970-01-01 12:00:00 AM");
+            parameterNode.Add(processDateTime); Console.WriteLine("---------------------------- 2");
+        }
+
+        private static void ReplaceDate(XAttribute attribute)
+        {
+
         }
 
 
