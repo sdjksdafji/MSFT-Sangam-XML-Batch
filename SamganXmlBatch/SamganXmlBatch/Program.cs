@@ -31,7 +31,7 @@ namespace SamganXmlBatch
                     FileInfo jobFile = new FileInfo(filename);
                     XElement doc = XElement.Load(jobFile.FullName,LoadOptions.PreserveWhitespace);
                     dfsXnode(doc, 0);
-                    doc.Save(jobFile.FullName);
+                    doc.Save(jobFile.FullName, SaveOptions.DisableFormatting);
                 }
 
                 file.Close();
