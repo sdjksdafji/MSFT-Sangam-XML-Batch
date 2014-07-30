@@ -179,7 +179,7 @@ namespace SamganXmlBatch
             if (parameterNode == null)
             {
                 parameterNode = new XElement("Parameters");
-                node.Add(parameterNode);
+                node.AddFirst(parameterNode);
             }
             XElement processDateTime = new XElement(BING_NS + "JobParameter");
             processDateTime.SetAttributeValue("name", "ProcessDateTime");
@@ -230,8 +230,14 @@ namespace SamganXmlBatch
             XElement macroNode = findChild("Macros", node);
             if (macroNode == null)
             {
+                XElement parameterNode = findChild("Parameters", node);
+                if (parameterNode == null)
+                {
+                    parameterNode = new XElement("Parameters");
+                    node.AddFirst(parameterNode);
+                }
                 macroNode = new XElement("Macros");
-                node.Add(macroNode);
+                parameterNode.AddAfterSelf(macroNode);
             }
             macroForYesterday.SetAttributeValue("name", "Yesterday");
             macroForYesterday.SetAttributeValue("type", "DateTime");
