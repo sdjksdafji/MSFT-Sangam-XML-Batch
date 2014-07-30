@@ -29,8 +29,8 @@ namespace SamganXmlBatch
                 {
                     Console.WriteLine(filename);
                     FileInfo jobFile = new FileInfo(filename);
-                    XDocument doc = XDocument.Load(jobFile.FullName);
-                    dfsXnode((XElement)doc.FirstNode, 0);
+                    XElement doc = XElement.Load(jobFile.FullName,LoadOptions.PreserveWhitespace);
+                    dfsXnode(doc, 0);
                     doc.Save(jobFile.FullName);
                 }
 
@@ -109,15 +109,13 @@ namespace SamganXmlBatch
             }
 
             ChangeNodeToYesterday(node);
-            XElement childNode = null;
-            childNode = (XElement)node.FirstNode;
-            while (childNode != null)
+            foreach (XElement childNode in node.Descendants())
             {
                 dfsXnode(childNode, depth + 1);
-                childNode = (XElement)childNode.NextNode;
             }
             if (depth == 0)
             {
+
                 if (!parameterTodayFound)
                 {
                     AddJobParameterProcessDateTime(node);
@@ -134,9 +132,7 @@ namespace SamganXmlBatch
 
             if (node.Name.ToString().Equals("Parameters", StringComparison.Ordinal))
             {
-                XElement childNode = null;
-                childNode = (XElement)node.FirstNode;
-                while (childNode != null)
+                foreach (XElement childNode in node.Descendants())
                 {
                     // search today in attributes of JobParameters
                     IEnumerable<XAttribute> attList =
@@ -158,7 +154,6 @@ namespace SamganXmlBatch
                         }
                     }
 
-                    childNode = (XElement)childNode.NextNode;
                 }
             BreakLabel:
 
@@ -193,9 +188,7 @@ namespace SamganXmlBatch
         {
             if (node.Name.ToString().Equals("Macros", StringComparison.Ordinal))
             {
-                XElement childNode = null;
-                childNode = (XElement)node.FirstNode;
-                while (childNode != null)
+                foreach (XElement childNode in node.Descendants())
                 {
                     IEnumerable<XAttribute> attList =
    from at in childNode.Attributes()
@@ -211,7 +204,6 @@ namespace SamganXmlBatch
                             yesterdayMacroFound = true;
                         }
                     }
-                    childNode = (XElement)childNode.NextNode;
                 }
                 return true;
             }
