@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Xml;
 using System.Xml.Linq;
 using System.Collections.Generic;
 using System.Linq;
@@ -29,9 +30,28 @@ namespace SamganXmlBatch
                 {
                     Console.WriteLine(filename);
                     FileInfo jobFile = new FileInfo(filename);
-                    XElement doc = XElement.Load(jobFile.FullName,LoadOptions.PreserveWhitespace);
+                    XElement doc = XElement.Load(jobFile.FullName, LoadOptions.PreserveWhitespace);
                     dfsXnode(doc, 0);
-                    doc.Save(jobFile.FullName, SaveOptions.DisableFormatting);
+                    //doc.Save(jobFile.FullName, SaveOptions.DisableFormatting);
+
+                    StringBuilder sb = new StringBuilder();
+                    XmlWriterSettings xws = new XmlWriterSettings();
+                    xws.NewLineHandling = NewLineHandling.Entitize;
+
+                    xws.OmitXmlDeclaration = true;
+                    xws.OmitXmlDeclaration = true;
+                    using (XmlWriter xw = XmlWriter.Create(sb, xws))
+                    {
+                        doc.Save(xw);
+                    }
+                    Console.WriteLine(sb.ToString());
+
+                    using (StreamWriter outfile = new StreamWriter(jobFile.FullName))
+                    {
+                        outfile.Write(sb.ToString());
+                    }
+
+                    //FormatCarriageReturn(jobFile);
                 }
 
                 file.Close();
@@ -55,34 +75,125 @@ namespace SamganXmlBatch
 
             Console.ReadKey();
         }
-
-        static private String getDirFromConsole()
+        private static void FormatCarriageReturn(FileInfo jobFile)
         {
-            Console.Write("Please enter the directory of XML file:");
-            String path = Console.ReadLine();
-            if (path != null)
+            String line;
+            List<String> newFile = new List<string>();
+            // Read the file and display it line by line.
+            System.IO.StreamReader file =
+               new System.IO.StreamReader(jobFile.FullName);
+            while ((line = file.ReadLine()) != null)
             {
-                Console.WriteLine("The directory is: " + path);
-            }
-            return path;
-        }
-
-        static private FileInfo[] getJobFiles(String dir, Boolean print)
-        {
-            DirectoryInfo di = new DirectoryInfo(dir);
-            Console.WriteLine(di.Attributes.ToString());
-            FileInfo[] fileNames = di.GetFiles("*.job.xml", SearchOption.AllDirectories);
-            if (print)
-            {
-                foreach (FileInfo fi in fileNames)
+                if (line.Contains(@"<?xml version="))
                 {
-                    Console.WriteLine("{0}: {1}: {2}", fi.Name, fi.LastAccessTime, fi.Length);
+                    String[] results = line.Split(new String[] { "<b", "activity\"" }, StringSplitOptions.None);
+                    if (results.Length > 0)
+                    {
+                        for (int i = 0; i < results.Length; i++)
+                        {
+                            if (i == 0)
+                            {
+                                newFile.Add(results[i]);
+                            }
+                            else if (i == 1)
+                            {
+                                newFile.Add("<b" + results[i] + "activity\"");
+                            }
+                            else
+                            {
+                                newFile.Add("\t" + results[i]);
+
+                            }
+                        }
+                    }
+                }
+                else if (line.Contains("<b:ScopeJobActivity"))
+                {
+                    String[] results = line.Split(new String[] { "<b:ScopeJobActivity" }, StringSplitOptions.RemoveEmptyEntries);
+                    if (results.Length > 0)
+                    {
+                        String tabs = results[0];
+                        results = line.Split(new String[] { " " }, StringSplitOptions.RemoveEmptyEntries);
+                        if (results.Length > 0)
+                        {
+                            newFile.Add(results[0]);
+                            int indexTime = -1;
+                            int indexMaxAvaliabilty = -1;
+                            int indexFullJobName = -1;
+                            for (int i = 1; i < results.Length; i++)
+                            {
+                                if (results[i].Contains("FullJobName"))
+                                {
+                                    indexFullJobName = i;
+                                }
+                                if (results[i].Contains("%Y_%m_%d"))
+                                {
+                                    indexTime = i;
+                                }
+                                if (results[i].Contains("maxUnavailability"))
+                                {
+                                    indexMaxAvaliabilty = i;
+                                }
+
+                            }
+
+                            for (int i = 1; i < indexFullJobName; i++)
+                            {
+                                newFile.Add(tabs + "\t" + results[i]);
+                            }
+                            string fullJobNameline = null;
+                            for (int i = indexFullJobName; i <= indexTime; i++)
+                            {
+                                fullJobNameline = fullJobNameline + results[i] + " ";
+
+                            }
+                            newFile.Add(tabs + "\t" + fullJobNameline);
+                            if (indexMaxAvaliabilty != -1)
+                            {
+                                for (int i = indexTime + 1; i < indexMaxAvaliabilty; i++)
+                                {
+                                    newFile.Add(tabs + "\t" + results[i]);
+                                }
+                                newFile.Add(tabs + "\t" + results[indexMaxAvaliabilty] + results[indexMaxAvaliabilty + 1]);
+
+                                for (int i = indexMaxAvaliabilty + 2; i < results.Length; i++)
+                                {
+                                    newFile.Add(tabs + "\t" + results[i]);
+                                }
+                            }
+                            else
+                            {
+                                for (int i = indexTime + 1; i < results.Length; i++)
+                                {
+                                    newFile.Add(tabs + "\t" + results[i]);
+                                }
+                            }
+
+                        }
+                    }
+                    else
+                    {
+                        Console.WriteLine("Serious Error");
+                    }
+                }
+                else
+                {
+                    newFile.Add(line);
+                }
+
+            }
+            file.Close();
+
+            using (System.IO.StreamWriter wFile = new System.IO.StreamWriter(jobFile.FullName))
+            {
+                foreach (string wLine in newFile)
+                {
+
+                    wFile.WriteLine(wLine);
+
                 }
             }
-            return fileNames;
         }
-
-
 
 
         private static void dfsXnode(XElement node, int depth)
