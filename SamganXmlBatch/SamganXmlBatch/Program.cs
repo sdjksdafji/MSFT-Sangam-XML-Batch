@@ -32,26 +32,26 @@ namespace SamganXmlBatch
                     FileInfo jobFile = new FileInfo(filename);
                     XElement doc = XElement.Load(jobFile.FullName, LoadOptions.PreserveWhitespace);
                     dfsXnode(doc, 0);
-                    //doc.Save(jobFile.FullName, SaveOptions.DisableFormatting);
+                    doc.Save(jobFile.FullName, SaveOptions.DisableFormatting);
 
-                    StringBuilder sb = new StringBuilder();
-                    XmlWriterSettings xws = new XmlWriterSettings();
-                    xws.NewLineHandling = NewLineHandling.Entitize;
+                    //StringBuilder sb = new StringBuilder();
+                    //XmlWriterSettings xws = new XmlWriterSettings();
+                    //xws.NewLineHandling = NewLineHandling.Entitize;
 
-                    xws.OmitXmlDeclaration = true;
-                    xws.OmitXmlDeclaration = true;
-                    using (XmlWriter xw = XmlWriter.Create(sb, xws))
-                    {
-                        doc.Save(xw);
-                    }
-                    Console.WriteLine(sb.ToString());
+                    //xws.OmitXmlDeclaration = true;
+                    //xws.OmitXmlDeclaration = true;
+                    //using (XmlWriter xw = XmlWriter.Create(sb, xws))
+                    //{
+                    //    doc.Save(xw);
+                    //}
+                    //Console.WriteLine(sb.ToString());
 
-                    using (StreamWriter outfile = new StreamWriter(jobFile.FullName))
-                    {
-                        outfile.Write(sb.ToString());
-                    }
+                    //using (StreamWriter outfile = new StreamWriter(jobFile.FullName))
+                    //{
+                    //    outfile.Write(sb.ToString());
+                    //}
 
-                    //FormatCarriageReturn(jobFile);
+                    FormatCarriageReturn(jobFile);
                 }
 
                 file.Close();
@@ -175,6 +175,15 @@ namespace SamganXmlBatch
                     {
                         Console.WriteLine("Serious Error");
                     }
+                }
+                else if (line.Contains(@"/></Macros>"))
+                {
+                    int index = line.IndexOf(@"/></Macros>");
+                    index += 2;
+                    String str1 = line.Substring(0, index);
+                    String str2 = line.Substring(index, line.Length - index);
+                    newFile.Add("\t"+str1);
+                    newFile.Add("\t"+str2);
                 }
                 else
                 {
